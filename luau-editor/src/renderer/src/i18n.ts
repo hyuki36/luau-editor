@@ -1,9 +1,48 @@
 /** Ngôn ngữ UI: English (mặc định) + Tiếng Việt. Lưu localStorage, offline. */
 
+import type { EditorOpts } from './types'
+
 export type Lang = 'vi' | 'en'
 
 export const LANG_KEY = 'eras:lang'
 export const ANIM_KEY = 'eras:animations'
+export const EDITOR_KEY = 'eras:editor'
+
+export const DEFAULT_EDITOR_OPTS: EditorOpts = {
+  fontSize: 14,
+  minimap: true,
+  wordWrap: true,
+  tabSize: 4
+}
+
+export function loadEditorOpts(): EditorOpts {
+  try {
+    const raw = localStorage.getItem(EDITOR_KEY)
+    if (raw) {
+      const p = JSON.parse(raw) as Partial<EditorOpts>
+      return {
+        fontSize:
+          typeof p.fontSize === 'number' && p.fontSize >= 10 && p.fontSize <= 24
+            ? p.fontSize
+            : DEFAULT_EDITOR_OPTS.fontSize,
+        minimap: p.minimap !== false,
+        wordWrap: p.wordWrap !== false,
+        tabSize: p.tabSize === 2 ? 2 : 4
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return { ...DEFAULT_EDITOR_OPTS }
+}
+
+export function saveEditorOpts(o: EditorOpts): void {
+  try {
+    localStorage.setItem(EDITOR_KEY, JSON.stringify(o))
+  } catch {
+    /* ignore */
+  }
+}
 
 const en = {
   openFile: 'Open File',
@@ -65,6 +104,8 @@ const en = {
   sandboxVal: 'Ready',
   ghostRow: 'Ghost AI',
   changelogTitle: 'Changelogs',
+  cl150: 'Scripts tab (local), editor settings, UI polish',
+  cl150b: 'Saved scripts + search, font/minimap/wrap options',
   cl140: 'New executor-style UI, E brand, frameless window',
   cl140b: 'Ghost prefix hints (print, loc...), settings with animations',
   cl130: 'Local Run sandbox, VI/EN settings, new skin',
@@ -87,7 +128,24 @@ const en = {
   logSaveErr: 'Save failed:',
   logSaveAsErr: 'Save As failed:',
   logRefreshErr: 'Refresh failed:',
-  logNewScript: 'New empty script.'
+  logNewScript: 'New empty script.',
+  scriptsNav: 'Scripts',
+  scriptsTitle: 'Scripts',
+  scriptsSearch: 'Search scripts',
+  scriptsBuiltin: 'Examples',
+  scriptsMine: 'My scripts',
+  scriptLoad: 'Load',
+  scriptSaveCurrent: 'Save current',
+  scriptNamePh: 'Script name...',
+  scriptDelete: 'Delete',
+  scriptsEmpty: 'No scripts yet. Save the current editor content.',
+  editorSection: 'Editor',
+  fontSizeOpt: 'Font size',
+  minimapOpt: 'Minimap',
+  wordWrapOpt: 'Word wrap',
+  tabSizeOpt: 'Tab size',
+  onWord: 'On',
+  offWord: 'Off'
 }
 
 export type StrKey = keyof typeof en
@@ -152,6 +210,8 @@ const vi: Record<StrKey, string> = {
   sandboxVal: 'Sẵn sàng',
   ghostRow: 'Ghost AI',
   changelogTitle: 'Nhật ký đổi mới',
+  cl150: 'Tab Scripts (local), settings soạn thảo, polish UI',
+  cl150b: 'Lưu script + tìm kiếm, tùy chọn font/minimap/wrap',
   cl140: 'UI kiểu executor mới, brand E, cửa sổ frameless',
   cl140b: 'Ghost gợi ý theo tiền tố, settings có animations',
   cl130: 'Sandbox Run local, settings VI/EN, skin mới',
@@ -174,7 +234,24 @@ const vi: Record<StrKey, string> = {
   logSaveErr: 'Lỗi lưu file:',
   logSaveAsErr: 'Lỗi Save As:',
   logRefreshErr: 'Lỗi làm mới:',
-  logNewScript: 'Script trống mới.'
+  logNewScript: 'Script trống mới.',
+  scriptsNav: 'Scripts',
+  scriptsTitle: 'Scripts',
+  scriptsSearch: 'Tìm script',
+  scriptsBuiltin: 'Ví dụ mẫu',
+  scriptsMine: 'Script của tôi',
+  scriptLoad: 'Nạp',
+  scriptSaveCurrent: 'Lưu hiện tại',
+  scriptNamePh: 'Tên script...',
+  scriptDelete: 'Xóa',
+  scriptsEmpty: 'Chưa có script nào. Lưu nội dung editor hiện tại.',
+  editorSection: 'Soạn thảo',
+  fontSizeOpt: 'Cỡ chữ',
+  minimapOpt: 'Minimap',
+  wordWrapOpt: 'Xuống dòng',
+  tabSizeOpt: 'Tab size',
+  onWord: 'Bật',
+  offWord: 'Tắt'
 }
 
 export function t(lang: Lang, key: StrKey): string {

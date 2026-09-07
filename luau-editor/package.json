@@ -1,6 +1,6 @@
 {
   "name": "luau-editor",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Minimal Luau editor for Roblox - Electron + React + Monaco",
   "license": "MIT",
   "main": "out/main/index.js",

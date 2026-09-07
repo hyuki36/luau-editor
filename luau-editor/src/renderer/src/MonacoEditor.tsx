@@ -3,6 +3,7 @@ import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { registerLuau } from './luau'
 import { getGhostSuggestion } from './ghostAI'
+import type { EditorOpts } from './types'
 
 // Worker local, không dùng CDN — chạy offline tốt trên Windows
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,19 +89,35 @@ interface Props {
   value: string
   filePath: string | null
   aiEnabled: boolean
+  editorOpts: EditorOpts
   onChange: (value: string) => void
   onCursor: (line: number, col: number) => void
 }
 
-export default function MonacoEditor({ value, filePath, aiEnabled, onChange, onCursor }: Props): JSX.Element {
+export default function MonacoEditor({ value, filePath, aiEnabled, editorOpts, onChange, onCursor }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const onChangeRef = useRef(onChange)
   const onCursorRef = useRef(onCursor)
   const aiEnabledRef = useRef(aiEnabled)
+  const optsRef = useRef(editorOpts)
   onChangeRef.current = onChange
   onCursorRef.current = onCursor
   aiEnabledRef.current = aiEnabled
+  optsRef.current = editorOpts
+
+  // Đồng bộ options editor từ Settings -> Monaco
+  useEffect(() => {
+    const editor = editorRef.current
+    if (editor) {
+      editor.updateOptions({
+        fontSize: editorOpts.fontSize,
+        minimap: { enabled: editorOpts.minimap },
+        wordWrap: editorOpts.wordWrap ? 'on' : 'off',
+        tabSize: editorOpts.tabSize
+      })
+    }
+  }, [editorOpts])
 
   // Đồng bộ nút bật/tắt AI ở status bar -> Monaco
   useEffect(() => {
@@ -126,17 +143,17 @@ export default function MonacoEditor({ value, filePath, aiEnabled, onChange, onC
       language: 'luau',
       theme: 'luau-dark',
       fontFamily: "'JetBrains Mono', Consolas, 'Courier New', monospace",
-      fontSize: 14,
+      fontSize: optsRef.current.fontSize,
       lineHeight: 21,
-      minimap: { enabled: true },
+      minimap: { enabled: optsRef.current.minimap },
       automaticLayout: true,
       scrollBeyondLastLine: false,
       renderLineHighlight: 'line',
       smoothScrolling: true,
       padding: { top: 8 },
-      tabSize: 4,
+      tabSize: optsRef.current.tabSize,
       insertSpaces: true,
-      wordWrap: 'on',
+      wordWrap: optsRef.current.wordWrap ? 'on' : 'off',
       bracketPairColorization: { enabled: true },
       // Ghost-text Copilot-style: chữ mờ inline, Tab nhận, Esc hủy (mặc định Monaco)
       inlineSuggest: { enabled: aiEnabledRef.current }

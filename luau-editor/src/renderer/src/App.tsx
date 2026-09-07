@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MonacoEditor from './MonacoEditor'
-import type { FileNode } from './types'
+import type { EditorOpts, FileNode } from './types'
 import { runLuauSnippet } from './lua-run'
-import { loadAnims, loadLang, saveAnims, saveLang, t, type Lang } from './i18n'
+import {
+  BUILTIN_SCRIPTS,
+  loadUserScripts,
+  saveUserScripts,
+  type ScriptEntry
+} from './scripts-library'
+import {
+  loadAnims,
+  loadEditorOpts,
+  loadLang,
+  saveAnims,
+  saveEditorOpts,
+  saveLang,
+  t,
+  type Lang
+} from './i18n'
 import './App.css'
 
-const APP_VERSION = 'v0.1.4'
+const APP_VERSION = 'v0.1.5'
 
 const SAMPLE = `-- Eras
 -- Open a .lua / .luau file, or press Run (Ctrl+Enter) to test basic logic
@@ -18,7 +33,7 @@ greet("world")
 print("2 + 3 =", 2 + 3)
 `
 
-type View = 'home' | 'editor' | 'settings'
+type View = 'home' | 'editor' | 'scripts' | 'settings'
 
 interface Cursor {
   line: number
@@ -110,6 +125,9 @@ const IconClear = (): JSX.Element => (
 const IconRefresh = (): JSX.Element => (
   <Icon d="M20 12a8 8 0 1 1-2.34-5.66M20 3.5V8h-4.5" />
 )
+const IconList = (): JSX.Element => (
+  <Icon d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12M4 6.5h.5M4 12h.5M4 17.5h.5" />
+)
 
 // ---------- Toggle switch ----------
 function Switch({ on, onFlip, label }: { on: boolean; onFlip: () => void; label: string }): JSX.Element {
@@ -143,6 +161,10 @@ export default function App(): JSX.Element {
   const animInit = useRef(loadAnims())
   const [animsOn, setAnimsOn] = useState<boolean>(animInit.current.on)
   const [reduceMotion, setReduceMotion] = useState<boolean>(animInit.current.reduce)
+  const [editorOpts, setEditorOpts] = useState<EditorOpts>(() => loadEditorOpts())
+  const [userScripts, setUserScripts] = useState<ScriptEntry[]>(() => loadUserScripts())
+  const [scriptSearch, setScriptSearch] = useState<string>('')
+  const [newScriptName, setNewScriptName] = useState<string>('')
   const dirty = content !== savedContent
 
   const pushLog = useCallback((msg: string) => {
@@ -161,6 +183,15 @@ export default function App(): JSX.Element {
   useEffect(() => {
     saveAnims(animsOn, reduceMotion)
   }, [animsOn, reduceMotion])
+
+  useEffect(() => {
+    saveEditorOpts(editorOpts)
+  }, [editorOpts])
+
+  const monacoOpts = useMemo<EditorOpts>(
+    () => ({ ...editorOpts }),
+    [editorOpts.fontSize, editorOpts.minimap, editorOpts.wordWrap, editorOpts.tabSize]
+  )
 
   useEffect(() => {
     window.api.windowIsMaximized().then(setIsMax).catch(() => undefined)
@@ -289,8 +320,56 @@ export default function App(): JSX.Element {
     [currentFile, dirty, pushLog]
   )
 
-  const refreshFolder = useCallback(async () => {
-    if (!folderRoot) return
+  // ---- Kho Scripts local ----
+  const filteredScripts = useMemo(() => {
+    const q = scriptSearch.trim().toLowerCase()
+    const all = [...userScripts, ...BUILTIN_SCRIPTS]
+    if (!q) return all
+    return all.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.desc.toLowerCase().includes(q) ||
+        s.code.toLowerCase().includes(q)
+    )
+  }, [userScripts, scriptSearch])
+
+  const loadScript = useCallback(
+    (entry: ScriptEntry) => {
+      if (dirty && !window.confirm(t(loadLang(), 'confirmUnsaved'))) return
+      setContent(entry.code)
+      setSavedContent(entry.code)
+      setCurrentFile(null)
+      setView('editor')
+    },
+    [dirty]
+  )
+
+  const saveCurrentAsScript = useCallback(() => {
+    const name = newScriptName.trim()
+    if (!name || !content.trim()) return
+    const entry: ScriptEntry = {
+      id: `user-${Date.now()}`,
+      title: name,
+      desc: `${content.split('\n').length} lines`,
+      code: content
+    }
+    setUserScripts((prev) => {
+      const next = [entry, ...prev]
+      saveUserScripts(next)
+      return next
+    })
+    setNewScriptName('')
+  }, [newScriptName, content])
+
+  const deleteScript = useCallback((id: string) => {
+    setUserScripts((prev) => {
+      const next = prev.filter((s) => s.id !== id)
+      saveUserScripts(next)
+      return next
+    })
+  }, [])
+
+  const refreshFolder = useCallback(async () => {    if (!folderRoot) return
     try {
       const tree = await window.api.listDir(folderRoot.path)
       setFolderRoot(tree)
@@ -406,6 +485,13 @@ export default function App(): JSX.Element {
             <IconCode />
           </button>
           <button
+            className={`tb-nav-btn${view === 'scripts' ? ' active' : ''}`}
+            title={t(lang, 'scriptsNav')}
+            onClick={() => setView('scripts')}
+          >
+            <IconList />
+          </button>
+          <button
             className={`tb-nav-btn${view === 'settings' ? ' active' : ''}`}
             title={t(lang, 'settings')}
             onClick={() => setView('settings')}
@@ -496,6 +582,10 @@ export default function App(): JSX.Element {
           <div className="info-card">
             <div className="info-title">{t(lang, 'changelogTitle')}</div>
             <div className="cl-entry">
+              <span className="cl-ver">v0.1.5</span>
+              <span className="cl-lines">{t(lang, 'cl150')}<br />{t(lang, 'cl150b')}</span>
+            </div>
+            <div className="cl-entry">
               <span className="cl-ver">v0.1.4</span>
               <span className="cl-lines">{t(lang, 'cl140')}<br />{t(lang, 'cl140b')}</span>
             </div>
@@ -535,6 +625,7 @@ export default function App(): JSX.Element {
                 value={content}
                 filePath={currentFile}
                 aiEnabled={aiEnabled}
+                editorOpts={monacoOpts}
                 onChange={(v) => setContent(v)}
                 onCursor={(line, col) => setCursor({ line, col })}
               />
@@ -632,10 +723,130 @@ export default function App(): JSX.Element {
         </div>
       )}
 
+      {/* ---------- SCRIPTS ---------- */}
+      {view === 'scripts' && (
+        <div className="view view-scripts" key={`scripts-${lang}`}>
+          <h1 className="welcome-title small">{t(lang, 'scriptsTitle')}</h1>
+          <div className="ws-search scripts-search">
+            <input
+              value={scriptSearch}
+              onChange={(e) => setScriptSearch(e.target.value)}
+              placeholder={t(lang, 'scriptsSearch')}
+            />
+          </div>
+          <div className="set-card">
+            <div className="set-title">{t(lang, 'scriptsMine')}</div>
+            <div className="save-row">
+              <input
+                value={newScriptName}
+                onChange={(e) => setNewScriptName(e.target.value)}
+                placeholder={t(lang, 'scriptNamePh')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveCurrentAsScript()
+                }}
+              />
+              <button className="primary-btn inline" onClick={() => saveCurrentAsScript()}>
+                {t(lang, 'scriptSaveCurrent')}
+              </button>
+            </div>
+            {userScripts.length === 0 && (
+              <div className="scripts-empty">{t(lang, 'scriptsEmpty')}</div>
+            )}
+            {filteredScripts
+              .filter((s) => !s.builtin)
+              .map((s) => (
+                <div className="script-row" key={s.id}>
+                  <span className="script-text">
+                    <span className="script-title">{s.title}</span>
+                    <span className="script-desc">{s.desc}</span>
+                  </span>
+                  <button className="mini-btn" onClick={() => loadScript(s)}>
+                    {t(lang, 'scriptLoad')}
+                  </button>
+                  <button className="mini-btn danger" onClick={() => deleteScript(s.id)}>
+                    {t(lang, 'scriptDelete')}
+                  </button>
+                </div>
+              ))}
+          </div>
+          <div className="set-card">
+            <div className="set-title">{t(lang, 'scriptsBuiltin')}</div>
+            {filteredScripts
+              .filter((s) => s.builtin)
+              .map((s) => (
+                <div className="script-row" key={s.id}>
+                  <span className="script-text">
+                    <span className="script-title">{s.title}</span>
+                    <span className="script-desc">{s.desc}</span>
+                  </span>
+                  <button className="mini-btn" onClick={() => loadScript(s)}>
+                    {t(lang, 'scriptLoad')}
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* ---------- SETTINGS ---------- */}
       {view === 'settings' && (
         <div className="view view-settings" key={`settings-${lang}`}>
           <h1 className="welcome-title small">{t(lang, 'settingsTitle')}</h1>
+          <div className="set-card">
+            <div className="set-title">{t(lang, 'editorSection')}</div>
+            <div className="set-row">
+              <span className="set-text">
+                <span className="set-name">{t(lang, 'fontSizeOpt')}</span>
+              </span>
+              <div className="seg">
+                {[12, 13, 14, 16, 18].map((n) => (
+                  <button
+                    key={n}
+                    className={`seg-btn${editorOpts.fontSize === n ? ' selected' : ''}`}
+                    onClick={() => setEditorOpts((o) => ({ ...o, fontSize: n }))}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="set-row">
+              <span className="set-text">
+                <span className="set-name">{t(lang, 'tabSizeOpt')}</span>
+              </span>
+              <div className="seg">
+                {[2, 4].map((n) => (
+                  <button
+                    key={n}
+                    className={`seg-btn${editorOpts.tabSize === n ? ' selected' : ''}`}
+                    onClick={() => setEditorOpts((o) => ({ ...o, tabSize: n as 2 | 4 }))}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="set-row">
+              <span className="set-text">
+                <span className="set-name">{t(lang, 'minimapOpt')}</span>
+              </span>
+              <Switch
+                on={editorOpts.minimap}
+                onFlip={() => setEditorOpts((o) => ({ ...o, minimap: !o.minimap }))}
+                label={t(lang, 'minimapOpt')}
+              />
+            </div>
+            <div className="set-row">
+              <span className="set-text">
+                <span className="set-name">{t(lang, 'wordWrapOpt')}</span>
+              </span>
+              <Switch
+                on={editorOpts.wordWrap}
+                onFlip={() => setEditorOpts((o) => ({ ...o, wordWrap: !o.wordWrap }))}
+                label={t(lang, 'wordWrapOpt')}
+              />
+            </div>
+          </div>
           <div className="set-card">
             <div className="set-title">{t(lang, 'appearance')}</div>
             <div className="set-sub">{t(lang, 'appearanceSub')}</div>

@@ -5,6 +5,13 @@ export interface FileNode {
   children?: FileNode[]
 }
 
+export interface EditorOpts {
+  fontSize: number
+  minimap: boolean
+  wordWrap: boolean
+  tabSize: number
+}
+
 export interface PreloadApi {
   openFileDialog: () => Promise<string | null>
   openFolderDialog: () => Promise<string | null>

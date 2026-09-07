@@ -7,11 +7,14 @@ chạy thử code offline, 2 ngôn ngữ VI/EN.
 ## Tính năng
 
 - Mở / lưu file `.lua` / `.luau` thật trên Windows (dialog native)
-- 3 màn hình: **Home** (welcome + thông tin + changelog), **Editor**, **Settings**
+- 4 màn hình: **Home** (welcome + thông tin + changelog), **Editor**, **Scripts**, **Settings**
+- **Scripts**: kho local offline — ví dụ học tập có sẵn + tự lưu script, tìm kiếm tại chỗ.
+  Không nối API script ngoài
 - Titlebar tự vẽ (frameless): logo E, nav Home/Editor/Settings, nút thu/phóng/đóng
 - Editor: watermark E, thanh action **Execute / Clear / Open / Save / Save As**,
   panel **Workspace** tìm kiếm + cây file, terminal hiện kết quả chạy
-- Settings: **Animations** bật/tắt, **Reduce motion**, ngôn ngữ, Ghost AI
+- Settings: **Animations** bật/tắt, **Reduce motion**, ngôn ngữ, Ghost AI,
+  **Editor** (cỡ chữ, minimap, xuống dòng, tab size)
 - Monaco highlight Luau (keywords `type`, `export`, `continue`, `typeof`... + gợi ý `game`, `Instance`, `task`...)
 - **Roblox API**: gợi ý `game`, `workspace`, `Players`, `TweenService`, `ReplicatedStorage` + ~20 service,
   method (`GetService`, `FindFirstChild`, `FireServer`...), class (`Part`, `RemoteEvent`...),
@@ -90,7 +93,7 @@ File nằm trong thư mục `release/`:
 | File | Dùng khi nào |
 |---|---|
 | `Eras.exe` | Tải về, double-click chạy luôn, không cần cài đặt — gửi file này cho người khác là tiện nhất |
-| `Eras-Setup-0.1.4.exe` | Bản cài đặt kiểu Windows (Next → Finish, có shortcut) |
+| `Eras-Setup-0.1.5.exe` | Bản cài đặt kiểu Windows (Next → Finish, có shortcut) |
 
 Gửi 1 trong 2 file qua Drive/Discord/USB là xong. Lưu ý lần build đầu Windows SmartScreen
 có thể cảnh báo app không rõ nhà phát hành (do chưa mua chứng chỉ ký) — bấm
@@ -152,7 +155,8 @@ luau-editor/
       ghostAI.ts       # mock getGhostSuggestion: block + gợi ý theo tiền tố
       lua-run.ts       # sandbox chạy thử Lua local (fengari, chống treo, chặn flood)
       fengari.d.ts     # types cho fengari
-      i18n.ts          # chuỗi VI/EN + nhớ ngôn ngữ (localStorage)
+      i18n.ts          # chuỗi VI/EN + nhớ ngôn ngữ/settings (localStorage)
+      scripts-library.ts # kho scripts local: ví dụ mẫu + save/load user
       roblox-api.ts    # data Roblox API offline: services, snippets, hover docs
       luau.ts          # đăng ký ngôn ngữ Luau + theme luau-dark + completion/hover
 ```
