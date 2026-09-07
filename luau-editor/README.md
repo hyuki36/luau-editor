@@ -127,10 +127,10 @@ vào tab **Actions → Build Windows exe → Run workflow**, tải file ở mụ
 luau-editor/
   package.json
   electron.vite.config.ts
-  electron/
-    main.ts      # BrowserWindow + IPC đọc/ghi file thật (fs, dialog)
-    preload.ts   # window.api an toàn qua contextBridge
-  src/renderer/
+  src/
+    main/index.ts    # BrowserWindow + IPC đọc/ghi file thật (fs, dialog)
+    preload/index.ts # window.api an toàn qua contextBridge
+    renderer/
     index.html
     src/
       main.tsx

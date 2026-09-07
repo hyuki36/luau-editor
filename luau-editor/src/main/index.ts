@@ -1,6 +1,13 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import { promises as fs } from 'fs'
+import { existsSync, promises as fs } from 'fs'
+
+// electron-vite build preload ra index.js hoặc index.mjs tùy version —
+// dò file thật tồn tại để không gãy đường dẫn preload.
+function resolvePreloadPath(): string {
+  const base = join(__dirname, '../preload/index')
+  return existsSync(base + '.js') ? base + '.js' : base + '.mjs'
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -11,7 +18,7 @@ function createWindow(): void {
     backgroundColor: '#1e1e1e',
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: resolvePreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
