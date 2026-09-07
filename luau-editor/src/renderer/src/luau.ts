@@ -158,7 +158,7 @@ export function registerLuau(monaco: typeof Monaco): void {
       { token: 'delimiter', foreground: 'D4D4D4' }
     ],
     colors: {
-      'editor.background': '#1E1E1E',
+      'editor.background': '#101319',
       'editor.foreground': '#D4D4D4',
       'editor.lineHighlightBackground': '#2A2D2E',
       'editorLineNumber.foreground': '#858585',
@@ -166,7 +166,7 @@ export function registerLuau(monaco: typeof Monaco): void {
       'editorCursor.foreground': '#AEAFAD',
       'editor.selectionBackground': '#264F78',
       'editor.inactiveSelectionBackground': '#3A3D41',
-      'editorGhostText.foreground': '#8a8a8a'
+      'editorGhostText.foreground': '#6d7590'
     }
   })
 }

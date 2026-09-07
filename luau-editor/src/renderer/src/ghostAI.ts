@@ -136,5 +136,54 @@ export function getGhostSuggestion(ctx: GhostContext): string | null {
     return IF_TAIL
   }
 
+  // 3. Gợi ý theo tiền tố: gõ `print` -> mờ thêm `("hello world")`, v.v.
+  // (suggestion được CHÈN SAU con trỏ nên chỉ trả về phần còn thiếu).
+  // Bỏ qua dòng comment để khỏi gợi ý linh tinh.
+  if (!/^\s*--/.test(line)) {
+    const tail = prefixTail(line)
+    if (tail) return tail
+    const rest = completePartialWord(line)
+    if (rest) return rest
+  }
+
+  return null
+}
+
+/** Đuôi gợi ý cho những đầu câu lệnh quen thuộc (khớp từ biên từ). */
+function prefixTail(line: string): string | null {
+  if (/(^|[^A-Za-z0-9_.:])print$/.test(line)) return '("hello world")'
+  if (/print\($/.test(line)) return '"hello world")'
+  if (/game:GetService\($/.test(line)) return '"Players")'
+  if (/Instance\.new\($/.test(line)) return '"Part")'
+  if (/task\.wait\($/.test(line)) return '1)'
+  if (/Vector3\.new\($/.test(line)) return '0, 0, 0)'
+  if (/CFrame\.new\($/.test(line)) return '0, 0, 0)'
+  if (/require\($/.test(line)) return 'script.Parent.Module)'
+  return null
+}
+
+/** Từ khóa/dựng sẵn để hoàn thành khi user mới gõ dở (vd `loc` -> `al`). */
+const PREFIX_WORDS = [
+  'and', 'break', 'continue', 'do', 'else', 'elseif', 'end', 'export',
+  'false', 'for', 'function', 'if', 'in', 'local', 'nil', 'not', 'or',
+  'repeat', 'return', 'self', 'then', 'true', 'type', 'typeof', 'until',
+  'while', 'game', 'workspace', 'script', 'Players', 'TweenService',
+  'ReplicatedStorage', 'Instance', 'Vector3', 'CFrame', 'task', 'print',
+  'warn', 'require', 'pairs', 'ipairs', 'tick', 'Enum', 'Color3',
+  'BrickColor', 'TweenInfo', 'table', 'string', 'math', 'pcall',
+  'tostring', 'tonumber', 'assert', 'error', 'select'
+]
+
+/** Nếu cuối dòng là 1 từ đang gõ dở, trả về phần còn thiếu của từ đó. */
+function completePartialWord(line: string): string | null {
+  const m = line.match(/([A-Za-z_]\w*)$/)
+  if (!m) return null
+  const word = m[1]
+  if (word.length < 2) return null
+  for (const cand of PREFIX_WORDS) {
+    if (cand.length > word.length && cand.startsWith(word)) {
+      return cand.slice(word.length)
+    }
+  }
   return null
 }

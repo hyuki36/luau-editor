@@ -1,22 +1,27 @@
-# Luau Editor (MVP)
+# Luau Editor
 
 App PC viết code Luau/Roblox — Electron + React + TypeScript + Vite + Monaco Editor.
-Giao diện minimal kiểu VSCode, theme dark duy nhất, có Ghost-Text-AI (mock, kiểu Copilot).
+Skin tối riêng (không giống VSCode), Ghost-Text-AI (mock, kiểu Copilot),
+chạy thử code offline, 2 ngôn ngữ VI/EN.
 
 ## Tính năng
 
 - Mở / lưu file `.lua` / `.luau` thật trên Windows (dialog native)
 - Mở folder, cây thư mục Explorer, click để mở file
-- Layout VSCode: sidebar trái — editor giữa — output dưới — status bar
+- Layout: sidebar trái — editor giữa — output dưới — status bar
 - Monaco highlight Luau (keywords `type`, `export`, `continue`, `typeof`... + gợi ý `game`, `Instance`, `task`...)
 - **Roblox API**: gợi ý `game`, `workspace`, `Players`, `TweenService`, `ReplicatedStorage` + ~20 service,
   method (`GetService`, `FindFirstChild`, `FireServer`...), class (`Part`, `RemoteEvent`...),
   snippet **LocalScript / ModuleScript / RemoteEvent**, hover `Instance.new` hiện docs — offline 100%
-- **Ghost-Text-AI**: gõ xong chờ 300ms hiện chữ mờ inline sau con trỏ, `Tab` nhận, `Esc` hủy
+- **Ghost-Text-AI**: gõ xong chờ 300ms hiện chữ mờ inline sau con trỏ, `Tab` nhận, `Esc` hủy.
+  Gõ `print` → mờ thêm `("hello world")`; gõ dở `loc` → mờ thêm `al`; block DataStore với `leaderstats`
 - Nút **AI: On/Off** ở status bar để bật/tắt gợi ý
-- Font JetBrains Mono, theme dark: nền `#1E1E1E`, sidebar `#181818`, accent `#007ACC`
-- Output hiển thị log + cảnh báo cân bằng `end` / `repeat-until` cơ bản
-- Phím tắt: `Ctrl+S` lưu, `Ctrl+O` mở file
+- **Execute (Run, Ctrl+Enter)**: chạy thử logic Lua cơ bản trong sandbox local (fengari, offline).
+  Không hỗ trợ API Roblox và cú pháp Luau-only — app báo rõ giới hạn. Muốn test full thì dùng Roblox Studio
+- **Settings**: đổi ngôn ngữ **English (mặc định) / Tiếng Việt**, tự nhớ lựa chọn
+- Font JetBrains Mono, skin tối riêng: nền slate `#14161d`, điểm nhấn hổ phách `#f0a832`, bo góc
+- Output hiển thị log + kết quả chạy + cảnh báo cân bằng `end` / `repeat-until` cơ bản
+- Phím tắt: `Ctrl+S` lưu, `Ctrl+O` mở file, `Ctrl+Enter` chạy thử
 - Chạy được bằng `npm run dev`
 
 ## Test Ghost-AI (leaderstats)
@@ -137,7 +142,10 @@ luau-editor/
       App.tsx          # layout VSCode + logic open/save
       App.css          # theme #1E1E1E / #181818 / #007ACC
       MonacoEditor.tsx # wrapper monaco-editor local (offline, có worker) + ghost-text AI
-      ghostAI.ts       # mock getGhostSuggestion(context: 50 dòng trước cursor)
+      ghostAI.ts       # mock getGhostSuggestion: block + gợi ý theo tiền tố
+      lua-run.ts       # sandbox chạy thử Lua local (fengari, chống treo, chặn flood)
+      fengari.d.ts     # types cho fengari
+      i18n.ts          # chuỗi VI/EN + nhớ ngôn ngữ (localStorage)
       roblox-api.ts    # data Roblox API offline: services, snippets, hover docs
       luau.ts          # đăng ký ngôn ngữ Luau + theme luau-dark + completion/hover
 ```

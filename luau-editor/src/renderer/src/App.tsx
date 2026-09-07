@@ -1,26 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MonacoEditor from './MonacoEditor'
 import type { FileNode } from './types'
+import { runLuauSnippet } from './lua-run'
+import { loadLang, saveLang, t, type Lang } from './i18n'
 import './App.css'
 
-const SAMPLE = `-- Luau Editor (MVP)
--- Mở file .lua / .luau thật bằng File > Open File hoặc Open Folder (Ctrl+O)
+const SAMPLE = `-- Luau Editor
+-- Open a .lua / .luau file with File > Open File or Open Folder (Ctrl+O)
+-- Chay thu: nhan Run (Ctrl+Enter) de chay logic co ban trong sandbox local
 
 local Players = game:GetService("Players")
 
-local function greet(player: Player)
+local function greet(player)
 \tprint("Hello, " .. player.Name)
 end
 
-Players.PlayerAdded:Connect(greet)
-
-export type Config = {
-\tmaxPlayers: number,
-\tdebug: boolean,
-}
-
-local config: Config = { maxPlayers = 10, debug = true }
-print(config)
+print("2 + 3 =", 2 + 3)
 `
 
 interface Cursor {
@@ -34,7 +29,7 @@ function now(): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-/** Kiểm tra Luau cơ bản cho MVP: đếm dòng + cân bằng block đơn giản */
+/** Kiểm tra Luau cơ bản: đếm dòng + cân bằng block đơn giản */
 function basicLuauCheck(src: string): string[] {
   const warnings: string[] = []
   const stripped = src
@@ -46,40 +41,54 @@ function basicLuauCheck(src: string): string[] {
   const dos = (stripped.match(/\bdo\b/g) || []).length
   const ends = (stripped.match(/\bend\b/g) || []).length
   if (open + dos !== ends) {
-    warnings.push(
-      `Có thể thiếu 'end': mở block (function/if/for/while/do) = ${open + dos}, 'end' = ${ends}.`
-    )
+    warnings.push(`block balance: open=${open + dos}, 'end'=${ends}`)
   }
   const repeats = (stripped.match(/\brepeat\b/g) || []).length
   const untils = (stripped.match(/\buntil\b/g) || []).length
   if (repeats !== untils) {
-    warnings.push(`repeat (${repeats}) và until (${untils}) không khớp.`)
+    warnings.push(`repeat (${repeats}) / until (${untils}) mismatch`)
   }
   return warnings
 }
 
-function fileNameOf(path: string | null): string {
-  if (!path) return 'Untitled'
+function fileNameOf(path: string | null, untitled: string): string {
+  if (!path) return untitled
   const parts = path.split(/[/\\]/)
   return parts[parts.length - 1] || path
 }
 
 export default function App(): JSX.Element {
+  const [lang, setLang] = useState<Lang>(() => loadLang())
   const [folderRoot, setFolderRoot] = useState<FileNode | null>(null)
   const [currentFile, setCurrentFile] = useState<string | null>(null)
   const [content, setContent] = useState<string>(SAMPLE)
   const [savedContent, setSavedContent] = useState<string>(SAMPLE)
-  const [logs, setLogs] = useState<string[]>([
-    `[${now()}] Luau Editor sẵn sàng. Mở file hoặc folder để bắt đầu.`
-  ])
+  const [logs, setLogs] = useState<string[]>([])
   const [cursor, setCursor] = useState<Cursor>({ line: 1, col: 1 })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [aiEnabled, setAiEnabled] = useState<boolean>(true)
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const dirty = content !== savedContent
 
   const pushLog = useCallback((msg: string) => {
     setLogs((prev) => [...prev.slice(-300), `[${now()}] ${msg}`])
   }, [])
+
+  // Log chào mừng theo ngôn ngữ hiện tại (chỉ 1 lần lúc mở app)
+  const welcomed = useRef(false)
+  useEffect(() => {
+    if (!welcomed.current) {
+      welcomed.current = true
+      pushLog(t(loadLang(), 'logReady'))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const changeLang = (next: Lang): void => {
+    setLang(next)
+    saveLang(next)
+    setSettingsOpen(false)
+  }
 
   const warnings = useMemo(() => basicLuauCheck(content), [content])
   const lineCount = useMemo(() => content.split('\n').length, [content])
@@ -92,9 +101,9 @@ export default function App(): JSX.Element {
       setCurrentFile(picked)
       setContent(text)
       setSavedContent(text)
-      pushLog(`Đã mở file: ${picked} (${text.split('\n').length} dòng)`)
+      pushLog(`${t(loadLang(), 'logOpenedFile')} ${picked} (${text.split('\n').length})`)
     } catch (e) {
-      pushLog(`Lỗi mở file: ${String(e)}`)
+      pushLog(`${t(loadLang(), 'logOpenErr')} ${String(e)}`)
     }
   }, [pushLog])
 
@@ -105,9 +114,9 @@ export default function App(): JSX.Element {
       const tree = await window.api.listDir(picked)
       setFolderRoot(tree)
       setExpanded(new Set([tree.path]))
-      pushLog(`Đã mở folder: ${picked}`)
+      pushLog(`${t(loadLang(), 'logOpenedFolder')} ${picked}`)
     } catch (e) {
-      pushLog(`Lỗi mở folder: ${String(e)}`)
+      pushLog(`${t(loadLang(), 'logFolderErr')} ${String(e)}`)
     }
   }, [pushLog])
 
@@ -119,14 +128,14 @@ export default function App(): JSX.Element {
         await window.api.writeFile(picked, content)
         setCurrentFile(picked)
         setSavedContent(content)
-        pushLog(`Đã lưu file mới: ${picked}`)
+        pushLog(`${t(loadLang(), 'logSavedNew')} ${picked}`)
         return
       }
       await window.api.writeFile(currentFile, content)
       setSavedContent(content)
-      pushLog(`Đã lưu: ${currentFile}`)
+      pushLog(`${t(loadLang(), 'logSaved')} ${currentFile}`)
     } catch (e) {
-      pushLog(`Lỗi lưu file: ${String(e)}`)
+      pushLog(`${t(loadLang(), 'logSaveErr')} ${String(e)}`)
     }
   }, [content, currentFile, pushLog])
 
@@ -137,16 +146,34 @@ export default function App(): JSX.Element {
       await window.api.writeFile(picked, content)
       setCurrentFile(picked)
       setSavedContent(content)
-      pushLog(`Đã lưu thành: ${picked}`)
+      pushLog(`${t(loadLang(), 'logSavedNew')} ${picked}`)
     } catch (e) {
-      pushLog(`Lỗi Save As: ${String(e)}`)
+      pushLog(`${t(loadLang(), 'logSaveAsErr')} ${String(e)}`)
     }
   }, [content, currentFile, pushLog])
+
+  // Chạy thử code trong sandbox Lua local (offline, không chạm Roblox)
+  const doRun = useCallback(() => {
+    pushLog(t(loadLang(), 'logRunStart'))
+    // setTimeout để log "start" kịp hiện trước khi chạy (tránh đơ UI 1 nhịp)
+    setTimeout(() => {
+      const res = runLuauSnippet(content, loadLang())
+      for (const line of res.lines) {
+        pushLog(`${t(loadLang(), 'logRunPrint')}: ${line}`)
+      }
+      if (res.error) {
+        pushLog(`${t(loadLang(), 'logRunError')} ${res.error}`)
+        if (res.note) pushLog(res.note)
+      } else {
+        pushLog(t(loadLang(), 'logRunOk'))
+      }
+    }, 30)
+  }, [content, pushLog])
 
   const openSpecificFile = useCallback(
     async (path: string) => {
       if (dirty && currentFile) {
-        const ok = window.confirm(`File hiện tại chưa lưu. Mở file khác và bỏ thay đổi?`)
+        const ok = window.confirm(t(loadLang(), 'confirmUnsaved'))
         if (!ok) return
       }
       try {
@@ -154,9 +181,9 @@ export default function App(): JSX.Element {
         setCurrentFile(path)
         setContent(text)
         setSavedContent(text)
-        pushLog(`Đã mở file: ${path}`)
+        pushLog(`${t(loadLang(), 'logOpenedFile')} ${path}`)
       } catch (e) {
-        pushLog(`Lỗi mở file: ${String(e)}`)
+        pushLog(`${t(loadLang(), 'logOpenErr')} ${String(e)}`)
       }
     },
     [currentFile, dirty, pushLog]
@@ -167,17 +194,19 @@ export default function App(): JSX.Element {
     try {
       const tree = await window.api.listDir(folderRoot.path)
       setFolderRoot(tree)
-      pushLog('Đã làm mới Explorer.')
+      pushLog(t(loadLang(), 'logRefreshed'))
     } catch (e) {
-      pushLog(`Lỗi làm mới folder: ${String(e)}`)
+      pushLog(`${t(loadLang(), 'logRefreshErr')} ${String(e)}`)
     }
   }, [folderRoot, pushLog])
 
-  // Phím tắt: Ctrl+S lưu, Ctrl+O mở file, Ctrl+K Ctrl+O mở folder
+  // Phím tắt: Ctrl+S lưu, Ctrl+O mở file, Ctrl+Enter chạy thử
   const saveRef = useRef(doSave)
   const openRef = useRef(doOpenFile)
+  const runRef = useRef(doRun)
   saveRef.current = doSave
   openRef.current = doOpenFile
+  runRef.current = doRun
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
@@ -187,6 +216,9 @@ export default function App(): JSX.Element {
       } else if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault()
         void openRef.current()
+      } else if (mod && e.key === 'Enter') {
+        e.preventDefault()
+        runRef.current()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -201,6 +233,8 @@ export default function App(): JSX.Element {
       return next
     })
   }
+
+  const untitled = t(lang, 'untitled')
 
   const renderTree = (node: FileNode, depth: number): JSX.Element => {
     if (node.type === 'file') {
@@ -241,27 +275,36 @@ export default function App(): JSX.Element {
 
   return (
     <div className="app">
-      {/* Menu bar tối giản */}
+      {/* Top bar */}
       <header className="menubar">
         <div className="menu-left">
-          <span className="app-title">Luau Editor</span>
-          <button className="menu-btn" onClick={() => void doOpenFile()} title="Mở file (Ctrl+O)">
-            Open File
+          <span className="brand">
+            <span className="brand-mark" aria-hidden="true" />
+            <span className="app-title">Luau Editor</span>
+          </span>
+          <button className="menu-btn" onClick={() => void doOpenFile()} title="Ctrl+O">
+            {t(lang, 'openFile')}
           </button>
-          <button className="menu-btn" onClick={() => void doOpenFolder()} title="Mở folder">
-            Open Folder
+          <button className="menu-btn" onClick={() => void doOpenFolder()}>
+            {t(lang, 'openFolder')}
           </button>
-          <button className="menu-btn" onClick={() => void doSave()} title="Lưu (Ctrl+S)">
-            Save
+          <button className="menu-btn" onClick={() => void doSave()} title="Ctrl+S">
+            {t(lang, 'save')}
           </button>
-          <button className="menu-btn" onClick={() => void doSaveAs()} title="Lưu thành file mới">
-            Save As
+          <button className="menu-btn" onClick={() => void doSaveAs()}>
+            {t(lang, 'saveAs')}
+          </button>
+          <button className="run-btn" onClick={() => doRun()} title={t(lang, 'runTitle')}>
+            ▶ {t(lang, 'execute')}
           </button>
         </div>
-        <div className="menu-center" title={currentFile ?? 'Chưa có file'}>
-          {currentFile ?? 'Untitled'}{dirty ? ' ●' : ''}
+        <div className="menu-center" title={currentFile ?? untitled}>
+          {currentFile ?? untitled}{dirty ? ' ●' : ''}
         </div>
         <div className="menu-right">
+          <button className="menu-btn" onClick={() => setSettingsOpen(true)}>
+            {t(lang, 'settings')}
+          </button>
           <span className="lang-badge">Luau</span>
         </div>
       </header>
@@ -270,8 +313,8 @@ export default function App(): JSX.Element {
         {/* Sidebar */}
         <aside className="sidebar">
           <div className="side-header">
-            <span>EXPLORER</span>
-            <button className="icon-btn" onClick={() => void refreshFolder()} title="Làm mới">
+            <span>{t(lang, 'explorer')}</span>
+            <button className="icon-btn" onClick={() => void refreshFolder()} title={t(lang, 'refreshTitle')}>
               ⟳
             </button>
           </div>
@@ -293,17 +336,17 @@ export default function App(): JSX.Element {
                     <div key={child.path}>{renderTree(child, 1)}</div>
                   ))}
                 {(folderRoot.children ?? []).length === 0 && (
-                  <div className="side-empty">Folder trống.</div>
+                  <div className="side-empty">{t(lang, 'folderEmpty')}</div>
                 )}
               </>
             ) : (
               <div className="side-empty">
-                <p>Chưa mở folder nào.</p>
+                <p>{t(lang, 'noFolder')}</p>
                 <button className="primary-btn" onClick={() => void doOpenFolder()}>
-                  Open Folder
+                  {t(lang, 'openFolder')}
                 </button>
                 <button className="ghost-btn" onClick={() => void doOpenFile()}>
-                  Open File
+                  {t(lang, 'openFile')}
                 </button>
               </div>
             )}
@@ -313,10 +356,10 @@ export default function App(): JSX.Element {
         {/* Center */}
         <section className="center">
           <div className="tabs">
-            <div className="tab active" title={currentFile ?? 'Untitled'}>
+            <div className="tab active" title={currentFile ?? untitled}>
               <span className="tab-name">
-                {fileNameOf(currentFile)}
-                {dirty ? <span className="dirty-dot"> ●</span> : ''}
+                {fileNameOf(currentFile, untitled)}
+                {dirty && <span className="dirty-dot" />}
               </span>
               <span className="tab-lang">Luau</span>
             </div>
@@ -335,15 +378,15 @@ export default function App(): JSX.Element {
           {/* Output */}
           <div className="panel">
             <div className="panel-header">
-              <span className="panel-title">OUTPUT</span>
+              <span className="panel-title">{t(lang, 'output')}</span>
               <span className="panel-sub">
                 {warnings.length === 0
-                  ? `OK — ${lineCount} dòng`
-                  : `${warnings.length} cảnh báo — ${lineCount} dòng`}
+                  ? `${t(lang, 'okLines')} — ${lineCount} ${t(lang, 'linesSuffix')}`
+                  : `${warnings.length} ${t(lang, 'warnSuffix')} — ${lineCount} ${t(lang, 'linesSuffix')}`}
               </span>
               <span className="spacer" />
-              <button className="icon-btn" onClick={() => setLogs([])} title="Xóa output">
-                Clear
+              <button className="icon-btn" onClick={() => setLogs([])} title={t(lang, 'clearTitle')}>
+                {t(lang, 'clear')}
               </button>
             </div>
             <div className="panel-body">
@@ -362,49 +405,74 @@ export default function App(): JSX.Element {
         </section>
       </div>
 
-      {/* Status bar */}
+      {/* Status bar — divider bằng CSS, không dùng ký tự "|" */}
       <footer className="statusbar">
         <div className="status-left">
           <button
             className={`ai-toggle${aiEnabled ? ' on' : ''}`}
-            title="Bật/tắt gợi ý AI ghost-text"
+            title={t(lang, 'aiToggleTitle')}
             onClick={() => {
               const next = !aiEnabled
               setAiEnabled(next)
-              pushLog(
-                next
-                  ? 'AI ghost-text: BẬT — gõ rồi chờ 300ms, Tab để nhận, Esc để hủy.'
-                  : 'AI ghost-text: TẮT.'
-              )
+              pushLog(next ? t(loadLang(), 'logAiOn') : t(loadLang(), 'logAiOff'))
             }}
           >
-            AI: {aiEnabled ? 'On' : 'Off'}
+            {aiEnabled ? t(lang, 'aiOn') : t(lang, 'aiOff')}
           </button>
-          <span className="status-sep">|</span>
-          <span>{fileNameOf(currentFile)}</span>
-          <span className="status-sep">|</span>
-          <span>{dirty ? 'Chưa lưu' : 'Đã lưu'}</span>
+          <span className="vdiv" />
+          <span>{fileNameOf(currentFile, untitled)}</span>
+          <span className="vdiv" />
+          <span>{dirty ? t(lang, 'unsaved') : t(lang, 'saved')}</span>
         </div>
         <div className="status-right">
           {aiEnabled && (
             <>
-              <span className="ai-hint" title="Gõ rồi chờ 300ms để hiện chữ mờ, Tab nhận, Esc hủy">
-                Tab nhận • Esc hủy
-              </span>
-              <span className="status-sep">|</span>
+              <span className="ai-hint">{t(lang, 'ghostHint')}</span>
+              <span className="vdiv" />
             </>
           )}
           <span>
             Ln {cursor.line}, Col {cursor.col}
           </span>
-          <span className="status-sep">|</span>
-          <span>Spaces: 4</span>
-          <span className="status-sep">|</span>
+          <span className="vdiv" />
+          <span>
+            {t(lang, 'spaces')}: 4
+          </span>
+          <span className="vdiv" />
           <span>UTF-8</span>
-          <span className="status-sep">|</span>
+          <span className="vdiv" />
           <span>Luau</span>
         </div>
       </footer>
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">{t(lang, 'settingsTitle')}</div>
+            <div className="modal-row">
+              <span className="modal-label">{t(lang, 'languageLabel')}</span>
+              <div className="lang-options">
+                <button
+                  className={`lang-option${lang === 'vi' ? ' selected' : ''}`}
+                  onClick={() => changeLang('vi')}
+                >
+                  Tiếng Việt
+                </button>
+                <button
+                  className={`lang-option${lang === 'en' ? ' selected' : ''}`}
+                  onClick={() => changeLang('en')}
+                >
+                  English
+                </button>
+              </div>
+            </div>
+            <button className="primary-btn modal-close" onClick={() => setSettingsOpen(false)}>
+              {t(lang, 'close')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
