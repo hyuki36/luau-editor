@@ -19,7 +19,13 @@ const api = {
   listDir: (dirPath: string): Promise<FileNode> =>
     ipcRenderer.invoke('fs:listDir', dirPath),
   showInFolder: (filePath: string): Promise<boolean> =>
-    ipcRenderer.invoke('shell:showInFolder', filePath)
+    ipcRenderer.invoke('shell:showInFolder', filePath),
+  windowMinimize: (): Promise<boolean> => ipcRenderer.invoke('window:minimize'),
+  windowToggleMaximize: (): Promise<boolean> =>
+    ipcRenderer.invoke('window:toggleMaximize'),
+  windowIsMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke('window:isMaximized'),
+  windowClose: (): Promise<boolean> => ipcRenderer.invoke('window:close')
 }
 
 contextBridge.exposeInMainWorld('api', api)

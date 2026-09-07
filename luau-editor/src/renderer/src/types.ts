@@ -13,6 +13,10 @@ export interface PreloadApi {
   writeFile: (filePath: string, content: string) => Promise<boolean>
   listDir: (dirPath: string) => Promise<FileNode>
   showInFolder: (filePath: string) => Promise<boolean>
+  windowMinimize: () => Promise<boolean>
+  windowToggleMaximize: () => Promise<boolean>
+  windowIsMaximized: () => Promise<boolean>
+  windowClose: () => Promise<boolean>
 }
 
 declare global {

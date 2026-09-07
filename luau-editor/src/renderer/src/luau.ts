@@ -158,7 +158,8 @@ export function registerLuau(monaco: typeof Monaco): void {
       { token: 'delimiter', foreground: 'D4D4D4' }
     ],
     colors: {
-      'editor.background': '#101319',
+      // Nền trong suốt để lộ watermark E phía dưới
+      'editor.background': '#00000000',
       'editor.foreground': '#D4D4D4',
       'editor.lineHighlightBackground': '#2A2D2E',
       'editorLineNumber.foreground': '#858585',

@@ -1,14 +1,17 @@
-# Luau Editor
+# Eras
 
 App PC viết code Luau/Roblox — Electron + React + TypeScript + Vite + Monaco Editor.
-Skin tối riêng (không giống VSCode), Ghost-Text-AI (mock, kiểu Copilot),
+UI tối kiểu executor (titlebar tự vẽ, watermark E, animations), Ghost-Text-AI,
 chạy thử code offline, 2 ngôn ngữ VI/EN.
 
 ## Tính năng
 
 - Mở / lưu file `.lua` / `.luau` thật trên Windows (dialog native)
-- Mở folder, cây thư mục Explorer, click để mở file
-- Layout: sidebar trái — editor giữa — output dưới — status bar
+- 3 màn hình: **Home** (welcome + thông tin + changelog), **Editor**, **Settings**
+- Titlebar tự vẽ (frameless): logo E, nav Home/Editor/Settings, nút thu/phóng/đóng
+- Editor: watermark E, thanh action **Execute / Clear / Open / Save / Save As**,
+  panel **Workspace** tìm kiếm + cây file, terminal hiện kết quả chạy
+- Settings: **Animations** bật/tắt, **Reduce motion**, ngôn ngữ, Ghost AI
 - Monaco highlight Luau (keywords `type`, `export`, `continue`, `typeof`... + gợi ý `game`, `Instance`, `task`...)
 - **Roblox API**: gợi ý `game`, `workspace`, `Players`, `TweenService`, `ReplicatedStorage` + ~20 service,
   method (`GetService`, `FindFirstChild`, `FireServer`...), class (`Part`, `RemoteEvent`...),
@@ -19,10 +22,14 @@ chạy thử code offline, 2 ngôn ngữ VI/EN.
 - **Execute (Run, Ctrl+Enter)**: chạy thử logic Lua cơ bản trong sandbox local (fengari, offline).
   Không hỗ trợ API Roblox và cú pháp Luau-only — app báo rõ giới hạn. Muốn test full thì dùng Roblox Studio
 - **Settings**: đổi ngôn ngữ **English (mặc định) / Tiếng Việt**, tự nhớ lựa chọn
-- Font JetBrains Mono, skin tối riêng: nền slate `#14161d`, điểm nhấn hổ phách `#f0a832`, bo góc
+- Font JetBrains Mono, skin executor tối: nền `#0b0c10`, điểm nhấn hổ phách `#f0a832`
 - Output hiển thị log + kết quả chạy + cảnh báo cân bằng `end` / `repeat-until` cơ bản
 - Phím tắt: `Ctrl+S` lưu, `Ctrl+O` mở file, `Ctrl+Enter` chạy thử
 - Chạy được bằng `npm run dev`
+
+> Không có Inject vào Roblox, không né antivirus, không bám version Roblox:
+> nút Execute chỉ chạy logic cơ bản trong sandbox local nên Roblox update
+> không bao giờ làm hỏng nó. Muốn test API game thì dùng Roblox Studio.
 
 ## Test Ghost-AI (leaderstats)
 
@@ -82,8 +89,8 @@ File nằm trong thư mục `release/`:
 
 | File | Dùng khi nào |
 |---|---|
-| `Luau-Editor-Portable.exe` | Tải về, double-click chạy luôn, không cần cài đặt — gửi file này cho người khác là tiện nhất |
-| `Luau Editor Setup 0.1.0.exe` | Bản cài đặt kiểu Windows (Next → Finish, có shortcut) |
+| `Eras.exe` | Tải về, double-click chạy luôn, không cần cài đặt — gửi file này cho người khác là tiện nhất |
+| `Eras-Setup-0.1.4.exe` | Bản cài đặt kiểu Windows (Next → Finish, có shortcut) |
 
 Gửi 1 trong 2 file qua Drive/Discord/USB là xong. Lưu ý lần build đầu Windows SmartScreen
 có thể cảnh báo app không rõ nhà phát hành (do chưa mua chứng chỉ ký) — bấm

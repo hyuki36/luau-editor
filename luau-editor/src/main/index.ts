@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { existsSync, promises as fs } from 'fs'
 
+let mainWin: BrowserWindow | null = null
+
 // electron-vite build preload ra index.js hoặc index.mjs tùy version —
 // dò file thật tồn tại để không gãy đường dẫn preload.
 function resolvePreloadPath(): string {
@@ -13,16 +15,22 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 900,
-    minHeight: 600,
-    backgroundColor: '#1e1e1e',
+    minWidth: 940,
+    minHeight: 620,
+    title: 'Eras',
+    backgroundColor: '#0b0c10',
     autoHideMenuBar: true,
+    frame: false,
     webPreferences: {
       preload: resolvePreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
     }
+  })
+  mainWin = win
+  win.on('closed', () => {
+    mainWin = null
   })
 
   // electron-vite dev server URL
@@ -130,6 +138,25 @@ function registerIpc(): void {
 
   ipcMain.handle('shell:showInFolder', async (_e, filePath: string) => {
     shell.showItemInFolder(filePath)
+    return true
+  })
+
+  // Điều khiển cửa sổ frameless (titlebar tự vẽ)
+  ipcMain.handle('window:minimize', () => {
+    mainWin?.minimize()
+    return true
+  })
+  ipcMain.handle('window:toggleMaximize', () => {
+    if (!mainWin) return false
+    if (mainWin.isMaximized()) mainWin.unmaximize()
+    else mainWin.maximize()
+    return mainWin.isMaximized()
+  })
+  ipcMain.handle('window:isMaximized', () => {
+    return mainWin?.isMaximized() ?? false
+  })
+  ipcMain.handle('window:close', () => {
+    mainWin?.close()
     return true
   })
 }
