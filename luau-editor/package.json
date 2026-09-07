@@ -1,0 +1,57 @@
+{
+  "name": "luau-editor",
+  "version": "0.1.0",
+  "description": "Minimal Luau editor for Roblox - Electron + React + Monaco",
+  "license": "MIT",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "npm run build; electron-builder",
+    "dist:win": "npm run build; electron-builder --win"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.52.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^33.0.2",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.5.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9"
+  },
+  "build": {
+    "appId": "com.luau.editor",
+    "productName": "Luau Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Luau Editor"
+    },
+    "portable": {
+      "artifactName": "Luau-Editor-Portable.exe"
+    }
+  }
+}

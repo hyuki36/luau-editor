@@ -1,0 +1,15 @@
+# Binaries / Roblox artefacts (giữ lại local, không đẩy lên GitHub)
+*.exe
+*.rbxm
+*.rbxlx
+
+# Editor deps & build output
+luau-editor/node_modules/
+luau-editor/out/
+luau-editor/release/
+luau-editor/dist/
+
+# OS / editor junk
+Desktop.ini
+Thumbs.db
+.vscode/
